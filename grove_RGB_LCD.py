@@ -1,21 +1,17 @@
 """grove_RGB_LCD.py
 Author: Mordecai Veldt (mordecai.veldt@gmail.com)
 2018 February 21
-
 ported from rgb_lcd.h & rgb_lcd.cpp made available by SEED Technology Inc.
 This provides 
 The MIT License (MIT)
-
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
-
   The above copyright notice and this permission notice shall be included in
   all copies or substantial portions of the Software.
-
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,7 +29,8 @@ from adafruit_bus_device.i2c_device import I2CDevice
 
 #definitions
 lcd_address = 0x7c >> 1  # 0x3e 8bit address bitshifted to be a 7 bit address
-rgb_address = 0xc4 >> 1  # 0x62 
+#rgb_address = 0xc4 >> 1  # 0x62 Address of SeedStudio Groove version (do not have)
+rgb_address = 0xc0 >> 1  # 0x60 Address of DFRobot RGB LCD
 [white, red, green, blue] = range(4)
 reg_red = 0x04
 reg_green = 0x03
@@ -90,9 +87,12 @@ color_define = [
 
 class rgb_lcd():
     """This is a port of the rgb_lcd.h and rgb_lcd.cpp from the grove seeduino arduino library"""
-    def __init__(self, cols, lines, dotsize = lcd_5x8dots):
+    def __init__(self, i2c_bus, cols, lines, dotsize = lcd_5x8dots):
         #considered making this a sub-class of I2CDevice, but rgb_lcd needs to actually have 2 devices, not one.
-        i2c_bus = busio.I2C(board.SCL,board.SDA)
+	# changed to i2c_bus as it was blocking GP-pins and preventing creating i2c in code.py
+#         i2c_bus = busio.I2C(board.SCL,board.SDA)
+#         i2c_bus = busio.I2C(board.GP3, board.GP2)
+        
         
         # define two I2CDevices, one for lcd (self.lcd), one for rgb (self.rgb)
         self.lcd = I2CDevice(i2c_bus, lcd_address)
@@ -143,7 +143,7 @@ class rgb_lcd():
         
 
     def setColorWhite(self):
-		setRGB(255,255,255)
+		self.setRGB(255,255,255)
 		
     def clear(self):
         """clear display, set cursor pos to zero"""
@@ -258,7 +258,7 @@ class rgb_lcd():
         buf[0] = addr
         buf[1] = dta
         with self.rgb as wire:
-            wire.write(buf, stop=True)
+            wire.write(buf)
     def setRGB(self, r, g, b):
         """set the backlight color"""
         self.setReg(reg_red, r)
@@ -267,15 +267,14 @@ class rgb_lcd():
     def setColor(self, color):
         """set rgb color from list. 0=white,1=red,2=green,3=blue"""
         if color > 3: return
-        setRGB(color_define[color][0],color_define[color][1],color_define[color][2])
+        self.setRGB(color_define[color][0],color_define[color][1],color_define[color][2])
     def i2c_send_bytes(self,dta):
         """send a bytearray 'dta' to the lcd address. use setReg for rgb address data transfers"""
         with self.lcd as wire:
-            wire.write(dta, stop=True)
+            wire.write(dta)
     def print(self, thing):
         """uses str() function on 'thing' and then writes it byte by byte to the lcd"""
         sthing = str(thing)
         for char in sthing:
             self.write(ord(char))
         
-
